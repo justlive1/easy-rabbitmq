@@ -1,0 +1,2 @@
+# easy-rabbitmq
+rabbitmq
