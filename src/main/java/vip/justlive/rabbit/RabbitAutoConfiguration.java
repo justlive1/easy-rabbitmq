@@ -46,6 +46,7 @@ import vip.justlive.rabbit.converter.CustomMessageConverter;
  *
  * @author wubo
  */
+@Slf4j
 @Configuration
 public class RabbitAutoConfiguration {
 
@@ -55,7 +56,6 @@ public class RabbitAutoConfiguration {
     return new CustomMessageConverter();
   }
 
-  @Slf4j
   @Configuration
   @ConditionalOnProperty(name = "spring.rabbitmq.listener.enabled", havingValue = "true")
   public class ConsumerConfiguration {
