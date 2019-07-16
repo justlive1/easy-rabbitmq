@@ -52,8 +52,8 @@
 
   <scm>
     <tag>master</tag>
-    <url>https://github.com/justlive1/easy-http</url>
-    <connection>https://github.com/justlive1/easy-http.git</connection>
+    <url>https://github.com/justlive1/easy-rabbitmq</url>
+    <connection>https://github.com/justlive1/easy-rabbitmq.git</connection>
   </scm>
 
   <build>
