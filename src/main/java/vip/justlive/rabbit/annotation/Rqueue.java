@@ -34,37 +34,31 @@ public @interface Rqueue {
 
   /**
    * 队列名称
-   * 
+   *
    * @return queue
    */
   String queue();
 
   /**
    * 交换空间名称
-   * 
+   *
    * @return exchange
    */
   String exchange() default "";
 
   /**
    * 交换空间工作模式
-   * 
+   *
    * @return type
    */
   String exchangeType() default "direct";
 
   /**
    * 队列路由
-   * 
+   *
    * @return routing
    */
   String routing() default "";
 
-  /**
-   * 是否延迟
-   * 
-   * @return delay
-   */
-  boolean delay() default false;
 
 }

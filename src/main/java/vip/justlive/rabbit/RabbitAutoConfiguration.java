@@ -65,9 +65,6 @@ public class RabbitAutoConfiguration {
     @Autowired
     private AmqpAdmin amqpAdmin;
 
-    @Autowired(required = false)
-    private List<Consumer<?>> list;
-
     @Value("${spring.rabbitmq.listener.prefetchCount:1}")
     private int prefetchCount;
 
@@ -76,7 +73,7 @@ public class RabbitAutoConfiguration {
 
     @Bean
     public SimpleMessageListenerContainer simpleMessageListenerContainer(MessageConverter converter,
-        ConnectionFactory connectionFactory) {
+        ConnectionFactory connectionFactory, @Autowired(required = false) List<Consumer<?>> list) {
       SimpleMessageListenerContainer container =
           new SimpleMessageListenerContainer(connectionFactory);
       init(list);

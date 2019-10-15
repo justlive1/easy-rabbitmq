@@ -22,7 +22,6 @@ import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.annotation.AnnotationAttributes;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.core.type.AnnotationMetadata;
-import vip.justlive.oxygen.core.constant.Constants;
 import vip.justlive.rabbit.annotation.RqueueScan;
 
 /**
@@ -47,8 +46,8 @@ public class ProducerRegistrar implements ImportBeanDefinitionRegistrar, Resourc
     }
 
     String[] basePackages = attributes.getStringArray("value");
-    String basePackage =
-        metadata.getClassName().substring(0, metadata.getClassName().lastIndexOf(Constants.DOT));
+    String basePackage = metadata.getClassName()
+        .substring(0, metadata.getClassName().lastIndexOf("."));
     if (basePackages.length == 0) {
       basePackages = new String[]{basePackage};
     } else {

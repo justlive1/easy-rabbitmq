@@ -17,7 +17,6 @@ package vip.justlive.rabbit.producer;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import vip.justlive.oxygen.core.exception.Exceptions;
 import vip.justlive.rabbit.annotation.Rqueue;
 
 /**
@@ -37,7 +36,7 @@ public class ProducerProxy<T> implements InvocationHandler {
   ProducerProxy(Class<T> clazz, RabbitTemplate template) {
     Rqueue rqueue = clazz.getAnnotation(Rqueue.class);
     if (rqueue == null) {
-      throw Exceptions.fail("BaseProducer 接口需要 @Rqueue");
+      throw new IllegalArgumentException("BaseProducer 接口需要 @Rqueue");
     }
     this.queue = rqueue.queue();
     this.exchange = rqueue.exchange();

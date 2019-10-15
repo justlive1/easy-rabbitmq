@@ -86,5 +86,6 @@ spring:
     port: 5672
     username: dev
     password: 123456
-
+    listener:
+      enabled: true
 ```
