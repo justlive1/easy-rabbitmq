@@ -14,38 +14,36 @@
 
 package vip.justlive.rabbit.converter;
 
-import java.io.Serializable;
+import com.alibaba.fastjson.JSON;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.support.converter.AbstractMessageConverter;
-import com.alibaba.fastjson.JSON;
 
 /**
  * 自定义转换器，处理类名不相同json转换报错问题
- * 
- * @author wubo
  *
+ * @author wubo
  */
 public class CustomMessageConverter extends AbstractMessageConverter {
-
+  
+  public static final CustomMessageConverter INS = new CustomMessageConverter();
+  
   @Override
   public Object fromMessage(Message message) {
     return message.getBody();
   }
-
+  
   @Override
   protected Message createMessage(Object object, MessageProperties props) {
-    byte[] bytes = null;
+    byte[] bytes;
     if (object instanceof byte[]) {
       bytes = (byte[]) object;
       props.setContentType(MessageProperties.CONTENT_TYPE_BYTES);
-    } else if (object instanceof Serializable) {
+    } else {
       bytes = JSON.toJSONBytes(object);
       props.setContentType(MessageProperties.CONTENT_TYPE_SERIALIZED_OBJECT);
     }
-    if (bytes != null) {
-      props.setContentLength(bytes.length);
-    }
+    props.setContentLength(bytes.length);
     return new Message(bytes, props);
   }
 }

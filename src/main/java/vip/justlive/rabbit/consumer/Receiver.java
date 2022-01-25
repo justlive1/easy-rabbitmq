@@ -16,13 +16,17 @@ package vip.justlive.rabbit.consumer;
 
 import com.alibaba.fastjson.JSON;
 import com.rabbitmq.client.Channel;
-import java.lang.reflect.Type;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.util.StringUtils;
 import vip.justlive.rabbit.converter.CustomMessageConverter;
+
+import java.lang.reflect.Type;
 
 /**
  * 接收处理器
@@ -30,14 +34,15 @@ import vip.justlive.rabbit.converter.CustomMessageConverter;
  * @author wubo
  */
 @Slf4j
-public class Receiver implements ChannelAwareMessageListener {
-
-  private final MessageConverter converter;
-
-  public Receiver(MessageConverter converter) {
-    this.converter = converter;
+public class Receiver implements ChannelAwareMessageListener, ApplicationContextAware {
+  
+  private ApplicationContext applicationContext;
+  
+  @Override
+  public void setApplicationContext(ApplicationContext applicationContext) {
+    this.applicationContext = applicationContext;
   }
-
+  
   @Override
   public void onMessage(Message message, Channel channel) throws Exception {
     try {
@@ -49,6 +54,15 @@ public class Receiver implements ChannelAwareMessageListener {
         channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false);
         return;
       }
+      
+      MessageConverter converter = CustomMessageConverter.INS;
+      if (StringUtils.hasText(consumer.getMessageConverter())) {
+        converter = applicationContext.getBean(consumer.getMessageConverter(), MessageConverter.class);
+      }
+      if (log.isDebugEnabled()) {
+        log.debug("using converter {}", converter);
+      }
+      
       Object msg = converter.fromMessage(message);
       if (converter instanceof CustomMessageConverter && msg instanceof byte[]) {
         // 特殊处理
@@ -67,5 +81,4 @@ public class Receiver implements ChannelAwareMessageListener {
       channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false);
     }
   }
-
 }

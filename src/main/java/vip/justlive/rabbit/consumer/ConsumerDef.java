@@ -14,6 +14,8 @@
 
 package vip.justlive.rabbit.consumer;
 
+import lombok.Getter;
+
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.HashMap;
@@ -21,34 +23,36 @@ import java.util.Map;
 
 /**
  * consumer定义类
- * 
- * @author wubo
  *
+ * @author wubo
  */
+@Getter
 public class ConsumerDef implements Consumer<Object> {
-
-  private static final Map<String, ConsumerDef> CONSUMERS = new HashMap<>(2);
-
+  
+  private static final Map<String, ConsumerDef> CONSUMERS = new HashMap<>(4);
+  
   private final String queue;
   private final String exchange;
   private final String routing;
+  private final String messageConverter;
   private final Consumer<Object> delegate;
-
+  
   private Type type;
-
+  
   @SuppressWarnings("unchecked")
-  private ConsumerDef(String queue, String exchange, String routing, Consumer<?> delegate) {
+  private ConsumerDef(String queue, String exchange, String routing, String messageConverter, Consumer<?> delegate) {
     this.queue = queue;
     this.exchange = exchange;
     this.routing = routing;
+    this.messageConverter = messageConverter;
     this.delegate = (Consumer<Object>) delegate;
   }
-
+  
   @Override
   public void accept(Object msg) {
     this.delegate.accept(msg);
   }
-
+  
   Type getType() {
     if (type != null) {
       return type;
@@ -65,21 +69,22 @@ public class ConsumerDef implements Consumer<Object> {
     }
     return type;
   }
-
+  
   private String key() {
     return key(queue, exchange, routing);
   }
-
+  
   private static String key(String queue, String exchange, String routing) {
     return String.join("|", queue, exchange, routing);
   }
-
-
-  public static void register(String queue, String exchange, String routing, Consumer<?> delegate) {
-    ConsumerDef definition = new ConsumerDef(queue, exchange, routing, delegate);
+  
+  
+  public static void register(String queue, String exchange, String routing, String messageConverter,
+                              Consumer<?> delegate) {
+    ConsumerDef definition = new ConsumerDef(queue, exchange, routing, messageConverter, delegate);
     CONSUMERS.put(definition.key(), definition);
   }
-
+  
   public static ConsumerDef lookup(String queue, String exchange, String routing) {
     return CONSUMERS.get(key(queue, exchange, routing));
   }

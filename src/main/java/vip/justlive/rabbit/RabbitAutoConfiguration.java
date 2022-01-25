@@ -14,32 +14,31 @@
 
 package vip.justlive.rabbit;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.core.AcknowledgeMode;
-import org.springframework.amqp.core.AmqpAdmin;
-import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.Exchange;
-import org.springframework.amqp.core.ExchangeBuilder;
-import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.amqp.rabbit.listener.adapter.MessageListenerAdapter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.EnvironmentAware;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.util.StringUtils;
 import vip.justlive.rabbit.annotation.Rqueue;
 import vip.justlive.rabbit.consumer.Consumer;
 import vip.justlive.rabbit.consumer.ConsumerDef;
 import vip.justlive.rabbit.consumer.Receiver;
 import vip.justlive.rabbit.converter.CustomMessageConverter;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 /**
  * rabbit auto configuration
@@ -49,68 +48,78 @@ import vip.justlive.rabbit.converter.CustomMessageConverter;
 @Slf4j
 @Configuration
 public class RabbitAutoConfiguration {
-
+  
   @Bean
   @ConditionalOnMissingBean(MessageConverter.class)
   public MessageConverter messageConverter() {
     return new CustomMessageConverter();
   }
-
+  
   @Configuration
   @ConditionalOnProperty(name = "spring.rabbitmq.listener.enabled", havingValue = "true")
-  public class ConsumerConfiguration {
-
-    private Set<String> queueNames = new HashSet<>();
-
-    @Autowired
-    private AmqpAdmin amqpAdmin;
-
-    @Value("${spring.rabbitmq.listener.prefetchCount:1}")
-    private int prefetchCount;
-
-    @Value("${spring.rabbitmq.listener.txSize:1}")
-    private int txSize;
-
+  public static class ConsumerConfiguration implements EnvironmentAware {
+    
+    private Environment environment;
+    
     @Bean
-    public SimpleMessageListenerContainer simpleMessageListenerContainer(MessageConverter converter,
-        ConnectionFactory connectionFactory, @Autowired(required = false) List<Consumer<?>> list) {
+    public Receiver simpleMessageReceiver() {
+      return new Receiver();
+    }
+    
+    @Bean
+    @ConditionalOnBean({ConnectionFactory.class, AmqpAdmin.class})
+    @ConfigurationProperties(prefix = "spring.rabbitmq.listener.simple")
+    public SimpleMessageListenerContainer simpleMessageListenerContainer(ConnectionFactory connectionFactory,
+                                                                         AmqpAdmin amqpAdmin, Receiver receiver,
+                                                                         @Autowired(required = false) List<Consumer<?>> list) {
+      Set<String> queueNames = new HashSet<>();
       SimpleMessageListenerContainer container =
           new SimpleMessageListenerContainer(connectionFactory);
-      init(list);
-      Receiver receiver = new Receiver(converter);
-      container.setMessageListener(new MessageListenerAdapter(receiver, converter));
+      init(list, amqpAdmin, queueNames);
+      container.setMessageListener(new MessageListenerAdapter(receiver));
       container.setQueueNames(queueNames.toArray(new String[0]));
       container.setAcknowledgeMode(AcknowledgeMode.MANUAL);
-      container.setPrefetchCount(prefetchCount);
-      container.setTxSize(txSize);
       return container;
     }
-
-    public void init(List<Consumer<?>> list) {
+    
+    private void init(List<Consumer<?>> list, AmqpAdmin amqpAdmin, Set<String> queueNames) {
       if (list == null || list.isEmpty()) {
         log.warn("not found MessageProcess");
         return;
       }
-
+      
       for (Consumer<?> consumer : list) {
         Rqueue rqueue = consumer.getClass().getAnnotation(Rqueue.class);
         if (rqueue == null) {
           log.warn("{} should be annotated by @Rqueue", consumer);
           continue;
         }
-
-        Queue queue = new Queue(rqueue.queue());
+        
+        String queueName = environment.resolvePlaceholders(rqueue.queue());
+        String exchangeName = environment.resolvePlaceholders(rqueue.exchange());
+        String exchangeType = environment.resolvePlaceholders(rqueue.exchangeType());
+        String routing = environment.resolvePlaceholders(rqueue.routing());
+        String messageConverter = environment.resolvePlaceholders(rqueue.messageConverter());
+        
+        Queue queue = new Queue(queueName);
         amqpAdmin.declareQueue(queue);
-        queueNames.add(rqueue.queue());
-
-        if (StringUtils.hasText(rqueue.exchange())) {
-          Exchange exchange = new ExchangeBuilder(rqueue.exchange(), rqueue.exchangeType()).build();
+        queueNames.add(queueName);
+        
+        if (StringUtils.hasText(exchangeName)) {
+          Exchange exchange = new ExchangeBuilder(exchangeName, exchangeType).build();
           amqpAdmin.declareExchange(exchange);
           amqpAdmin.declareBinding(
-              BindingBuilder.bind(queue).to(exchange).with(rqueue.routing()).noargs());
+              BindingBuilder.bind(queue).to(exchange).with(routing).noargs());
         }
-        ConsumerDef.register(rqueue.queue(), rqueue.exchange(), rqueue.routing(), consumer);
+        log.info("register consumer for [{}][{}][{}] using [{}][{}]", queueName, exchangeName, routing,
+            messageConverter, consumer);
+        ConsumerDef.register(queueName, exchangeName, routing, messageConverter, consumer);
       }
+    }
+    
+    @Override
+    public void setEnvironment(Environment environment) {
+      this.environment = environment;
     }
   }
 }

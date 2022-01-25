@@ -14,10 +14,13 @@
 
 package vip.justlive.rabbit.producer;
 
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.core.env.Environment;
+import vip.justlive.rabbit.annotation.Rqueue;
+
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import vip.justlive.rabbit.annotation.Rqueue;
 
 /**
  * proxy
@@ -25,39 +28,42 @@ import vip.justlive.rabbit.annotation.Rqueue;
  * @param <T> 泛型
  * @author wubo
  */
+@Slf4j
 public class ProducerProxy<T> implements InvocationHandler {
-
-  private final String queue;
+  
   private final String exchange;
   private final String routing;
   private final boolean exchangeMode;
   private final RabbitTemplate template;
-
-  ProducerProxy(Class<T> clazz, RabbitTemplate template) {
+  
+  ProducerProxy(Class<T> clazz, RabbitTemplate template, Environment environment) {
     Rqueue rqueue = clazz.getAnnotation(Rqueue.class);
     if (rqueue == null) {
       throw new IllegalArgumentException("BaseProducer 接口需要 @Rqueue");
     }
-    this.queue = rqueue.queue();
-    this.exchange = rqueue.exchange();
-    this.routing = rqueue.routing();
+    
+    String queue = environment.resolvePlaceholders(rqueue.queue());
+    this.exchange = environment.resolvePlaceholders(rqueue.exchange());
+    this.routing = environment.resolvePlaceholders(rqueue.routing());
     this.exchangeMode = exchange.length() > 0;
     this.template = template;
+    
+    log.info("created producer proxy for queue [{}][{}][{}]", queue, exchange, routing);
   }
-
+  
   @Override
   public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-
+    
     if (!BaseProducer.class.equals(method.getDeclaringClass())) {
       return method.invoke(this, args);
     }
-
+    
     if (exchangeMode) {
       template.convertAndSend(exchange, routing, args[0]);
     } else {
-      template.convertAndSend(queue, args[0]);
+      template.convertAndSend(routing, args[0]);
     }
     return null;
   }
-
+  
 }
