@@ -1,15 +1,15 @@
 /*
- * Copyright (C) 2019 justlive1
+ * Copyright (C) 2022 the original author or authors.
  *
- *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- *  in compliance with the License. You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software distributed under the License
- *  is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- *  or implied. See the License for the specific language governing permissions and limitations under
- *  the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
  */
 
 package vip.justlive.rabbit.producer;
@@ -31,10 +31,9 @@ import java.lang.reflect.Method;
 @Slf4j
 public class ProducerProxy<T> implements InvocationHandler {
   
-  private final String exchange;
-  private final String routing;
   private final boolean exchangeMode;
   private final RabbitTemplate template;
+  private final QueueProperties queueProperties;
   
   ProducerProxy(Class<T> clazz, RabbitTemplate template, Environment environment) {
     Rqueue rqueue = clazz.getAnnotation(Rqueue.class);
@@ -43,8 +42,10 @@ public class ProducerProxy<T> implements InvocationHandler {
     }
     
     String queue = environment.resolvePlaceholders(rqueue.queue());
-    this.exchange = environment.resolvePlaceholders(rqueue.exchange());
-    this.routing = environment.resolvePlaceholders(rqueue.routing());
+    String exchange = environment.resolvePlaceholders(rqueue.exchange());
+    String routing = environment.resolvePlaceholders(rqueue.routing());
+    String messageConverter = environment.resolvePlaceholders(rqueue.messageConverter());
+    this.queueProperties = new QueueProperties(queue, exchange, routing, messageConverter);
     this.exchangeMode = exchange.length() > 0;
     this.template = template;
     
@@ -58,10 +59,12 @@ public class ProducerProxy<T> implements InvocationHandler {
       return method.invoke(this, args);
     }
     
+    QueueProperties.set(queueProperties);
+    
     if (exchangeMode) {
-      template.convertAndSend(exchange, routing, args[0]);
+      template.convertAndSend(queueProperties.getExchange(), queueProperties.getRouting(), args[0], queueProperties);
     } else {
-      template.convertAndSend(routing, args[0]);
+      template.convertAndSend(queueProperties.getRouting(), args[0], queueProperties);
     }
     return null;
   }

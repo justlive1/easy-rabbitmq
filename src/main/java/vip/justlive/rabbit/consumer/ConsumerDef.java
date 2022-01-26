@@ -1,20 +1,21 @@
 /*
- * Copyright (C) 2019 justlive1
+ * Copyright (C) 2022 the original author or authors.
  *
- *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
- *  in compliance with the License. You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
  *
- *  http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- *  Unless required by applicable law or agreed to in writing, software distributed under the License
- *  is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
- *  or implied. See the License for the specific language governing permissions and limitations under
- *  the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
  */
 
 package vip.justlive.rabbit.consumer;
 
 import lombok.Getter;
+import vip.justlive.rabbit.producer.QueueProperties;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -31,20 +32,14 @@ public class ConsumerDef implements Consumer<Object> {
   
   private static final Map<String, ConsumerDef> CONSUMERS = new HashMap<>(4);
   
-  private final String queue;
-  private final String exchange;
-  private final String routing;
-  private final String messageConverter;
+  private final QueueProperties queueProperties;
   private final Consumer<Object> delegate;
   
   private Type type;
   
   @SuppressWarnings("unchecked")
-  private ConsumerDef(String queue, String exchange, String routing, String messageConverter, Consumer<?> delegate) {
-    this.queue = queue;
-    this.exchange = exchange;
-    this.routing = routing;
-    this.messageConverter = messageConverter;
+  private ConsumerDef(QueueProperties queueProperties, Consumer<?> delegate) {
+    this.queueProperties = queueProperties;
     this.delegate = (Consumer<Object>) delegate;
   }
   
@@ -53,7 +48,7 @@ public class ConsumerDef implements Consumer<Object> {
     this.delegate.accept(msg);
   }
   
-  Type getType() {
+  public Type getType() {
     if (type != null) {
       return type;
     }
@@ -70,22 +65,17 @@ public class ConsumerDef implements Consumer<Object> {
     return type;
   }
   
-  private String key() {
-    return key(queue, exchange, routing);
-  }
-  
-  private static String key(String queue, String exchange, String routing) {
-    return String.join("|", queue, exchange, routing);
-  }
-  
-  
   public static void register(String queue, String exchange, String routing, String messageConverter,
                               Consumer<?> delegate) {
-    ConsumerDef definition = new ConsumerDef(queue, exchange, routing, messageConverter, delegate);
-    CONSUMERS.put(definition.key(), definition);
+    QueueProperties queueProperties = new QueueProperties(queue, exchange, routing, messageConverter);
+    CONSUMERS.put(key(queue, exchange, routing), new ConsumerDef(queueProperties, delegate));
   }
   
   public static ConsumerDef lookup(String queue, String exchange, String routing) {
     return CONSUMERS.get(key(queue, exchange, routing));
+  }
+  
+  private static String key(String queue, String exchange, String routing) {
+    return String.join("|", queue, exchange, routing);
   }
 }
