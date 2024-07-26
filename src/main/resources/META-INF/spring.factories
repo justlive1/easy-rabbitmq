@@ -1,3 +1,3 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-vip.justlive.rabbit.RabbitAutoConfiguration,\
+vip.justlive.rabbit.RabbitProducerAutoConfiguration,\
   vip.justlive.rabbit.RabbitConsumerAutoConfiguration

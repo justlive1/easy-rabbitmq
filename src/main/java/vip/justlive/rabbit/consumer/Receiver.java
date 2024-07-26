@@ -21,6 +21,7 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
 import org.springframework.amqp.support.converter.MessageConverter;
+import vip.justlive.rabbit.EasyRabbitProperties;
 
 /**
  * 接收处理器
@@ -30,9 +31,10 @@ import org.springframework.amqp.support.converter.MessageConverter;
 @Slf4j
 @RequiredArgsConstructor
 public class Receiver implements ChannelAwareMessageListener {
-  
+
   private final MessageConverter converter;
-  
+  private final EasyRabbitProperties properties;
+
   @Override
   public void onMessage(Message message, Channel channel) throws Exception {
     try {
@@ -44,17 +46,19 @@ public class Receiver implements ChannelAwareMessageListener {
         channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false);
         return;
       }
-      
+
       Object msg = converter.fromMessage(message);
-      
+
       if (log.isDebugEnabled()) {
         log.debug("receive msg {}", msg);
       }
       consumer.accept(msg);
-      channel.basicAck(message.getMessageProperties().getDeliveryTag(), false);
+      channel.basicAck(message.getMessageProperties().getDeliveryTag(),
+          properties.getConsumer().isAckMultiple());
     } catch (Exception e) {
       log.error("receive msg error {}", message, e);
-      channel.basicNack(message.getMessageProperties().getDeliveryTag(), false, false);
+      channel.basicNack(message.getMessageProperties().getDeliveryTag(),
+          properties.getConsumer().isNackMultiple(), properties.getConsumer().isNackRequeue());
     }
   }
 }

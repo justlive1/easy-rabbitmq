@@ -43,7 +43,6 @@ public class QueueProperties implements MessagePostProcessor {
   
   @Override
   public Message postProcessMessage(Message message) {
-    System.out.println("========" + get());
     HOLDER.remove();
     return message;
   }

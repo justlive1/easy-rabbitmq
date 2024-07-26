@@ -19,7 +19,6 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-
 import org.springframework.stereotype.Component;
 
 /**
@@ -32,41 +31,48 @@ import org.springframework.stereotype.Component;
 @Documented
 @Component
 public @interface Rqueue {
-  
+
   /**
    * 队列名称
    *
    * @return queue
    */
   String queue();
-  
+
   /**
    * 交换空间名称
    *
    * @return exchange
    */
   String exchange() default "";
-  
+
   /**
    * 交换空间工作模式
    *
    * @return type
    */
   String exchangeType() default "direct";
-  
+
   /**
    * 队列路由
    *
    * @return routing
    */
   String routing() default "";
-  
+
   /**
    * 消息转换器（BeanName）
    *
    * @return messageConverter
    */
   String messageConverter() default "";
-  
-  
+
+  /**
+   * 消息处理分组
+   *
+   * @return group
+   */
+  String group() default "";
+
+
 }

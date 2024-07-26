@@ -14,33 +14,25 @@
 
 package vip.justlive.rabbit;
 
-import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.core.AmqpAdmin;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.AutoConfigureAfter;
+import org.springframework.boot.autoconfigure.AutoConfigureBefore;
+import org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import vip.justlive.rabbit.consumer.Consumer;
-import vip.justlive.rabbit.consumer.ConsumerInitializer;
 import vip.justlive.rabbit.producer.ProducerRegistryPostProcessor;
 
 /**
- * rabbit consumer auto configuration
+ * rabbit auto configuration
  *
  * @author wubo
  */
 @Slf4j
-@AutoConfigureAfter(RabbitProducerAutoConfiguration.class)
-@ConditionalOnProperty(name = "easy-boot.rabbit.consumer.enabled", havingValue = "true")
-public class RabbitConsumerAutoConfiguration {
-
-  @Bean
-  @ConditionalOnMissingBean
-  public ProducerRegistryPostProcessor producerRegistryPostProcessor() {
-    return new ProducerRegistryPostProcessor();
-  }
+@EnableConfigurationProperties(EasyRabbitProperties.class)
+@ConditionalOnProperty(name = "easy-boot.rabbit.producer.enabled", havingValue = "true")
+@AutoConfigureBefore(RabbitAutoConfiguration.class)
+public class RabbitProducerAutoConfiguration {
 
   @Bean
   @ConditionalOnMissingBean
@@ -50,14 +42,8 @@ public class RabbitConsumerAutoConfiguration {
 
   @Bean
   @ConditionalOnMissingBean
-  public RabbitConsumerBeanFactoryPostProcessor rabbitConsumerBeanFactoryPostProcessor() {
-    return new RabbitConsumerBeanFactoryPostProcessor();
-  }
-
-  @Bean
-  public ConsumerInitializer consumerInitializer(AmqpAdmin amqpAdmin,
-      @Autowired(required = false) List<Consumer<?>> list) {
-    return new ConsumerInitializer(amqpAdmin, list);
+  public ProducerRegistryPostProcessor producerRegistryPostProcessor() {
+    return new ProducerRegistryPostProcessor();
   }
 
 
