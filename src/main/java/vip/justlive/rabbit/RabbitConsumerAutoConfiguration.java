@@ -16,7 +16,6 @@ package vip.justlive.rabbit;
 
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.amqp.core.AmqpAdmin;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -55,9 +54,9 @@ public class RabbitConsumerAutoConfiguration {
   }
 
   @Bean
-  public ConsumerInitializer consumerInitializer(AmqpAdmin amqpAdmin,
+  public ConsumerInitializer consumerInitializer(
       @Autowired(required = false) List<Consumer<?>> list) {
-    return new ConsumerInitializer(amqpAdmin, list);
+    return new ConsumerInitializer(list);
   }
 
 

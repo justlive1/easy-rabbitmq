@@ -36,6 +36,7 @@ public class ConsumerMeta {
   private final String routing;
   private final String messageConverter;
   private final String group;
+  private final String datasource;
   private final String className;
 
 
@@ -47,13 +48,13 @@ public class ConsumerMeta {
     return METAS.get(type.getName());
   }
 
-  public static Map<String, List<ConsumerMeta>> group() {
-    Map<String, List<ConsumerMeta>> groups = new HashMap<>(4);
+  public static Map<String, Map<String, List<ConsumerMeta>>> group() {
+    Map<String, Map<String, List<ConsumerMeta>>> groups = new HashMap<>(4);
 
     for (Map.Entry<String, ConsumerMeta> entry : METAS.entrySet()) {
-      groups.computeIfAbsent(entry.getValue().group, k -> new ArrayList<>()).add(entry.getValue());
+      groups.computeIfAbsent(entry.getValue().datasource, k -> new HashMap<>(4))
+          .computeIfAbsent(entry.getValue().group, k -> new ArrayList<>()).add(entry.getValue());
     }
-
     return groups;
   }
 }

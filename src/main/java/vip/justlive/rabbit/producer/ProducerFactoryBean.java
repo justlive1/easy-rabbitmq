@@ -14,13 +14,10 @@
 
 package vip.justlive.rabbit.producer;
 
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import java.lang.reflect.Proxy;
 import org.springframework.beans.factory.FactoryBean;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.core.env.Environment;
-
-import java.lang.reflect.Proxy;
 
 
 /**
@@ -30,31 +27,25 @@ import java.lang.reflect.Proxy;
  * @author wubo
  */
 public class ProducerFactoryBean<T> implements FactoryBean<T>, EnvironmentAware {
-  
+
   private final Class<T> clazz;
   private Environment environment;
-  private RabbitTemplate template;
-  
-  @Autowired(required = false)
-  public void setTemplate(RabbitTemplate template) {
-    this.template = template;
-  }
-  
+
   public ProducerFactoryBean(Class<T> clazz) {
     this.clazz = clazz;
   }
-  
+
   @Override
   public T getObject() {
     return clazz.cast(Proxy.newProxyInstance(clazz.getClassLoader(), new Class[]{clazz},
-        new ProducerProxy<>(clazz, template, environment)));
+        new ProducerProxy<>(clazz, environment)));
   }
-  
+
   @Override
   public Class<?> getObjectType() {
     return clazz;
   }
-  
+
   @Override
   public void setEnvironment(Environment environment) {
     this.environment = environment;

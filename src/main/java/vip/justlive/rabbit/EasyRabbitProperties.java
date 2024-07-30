@@ -14,6 +14,7 @@
 
 package vip.justlive.rabbit;
 
+import java.util.Map;
 import lombok.Data;
 import org.springframework.boot.autoconfigure.amqp.RabbitProperties;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -32,7 +33,7 @@ public class EasyRabbitProperties {
 
 
   private String[] basePackages;
-  private RabbitProperties config;
+  private Map<String, RabbitProperties> sources;
   private ProducerProperties producer;
   private ConsumerProperties consumer;
 

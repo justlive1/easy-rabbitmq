@@ -14,6 +14,7 @@
 
 package vip.justlive.rabbit;
 
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.connection.RabbitConnectionFactoryBean;
@@ -25,6 +26,7 @@ import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.autoconfigure.amqp.CachingConnectionFactoryConfigurer;
 import org.springframework.boot.autoconfigure.amqp.RabbitConnectionFactoryBeanConfigurer;
+import org.springframework.boot.autoconfigure.amqp.RabbitProperties;
 import org.springframework.boot.autoconfigure.amqp.RabbitTemplateConfigurer;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.context.EnvironmentAware;
@@ -53,27 +55,39 @@ public class RabbitBeanFactoryPostProcessor implements BeanFactoryPostProcessor,
     EasyRabbitProperties props = binder.bindOrCreate(EasyRabbitProperties.PREFIX,
         EasyRabbitProperties.class);
 
-    if (props.getConfig() == null) {
-      log.info("'easy-boot.rabbit.config' is null, easy rabbit is disabled.");
+    if (props.getSources() == null) {
+      log.info("'easy-boot.rabbit.sources' is null, easy rabbit is disabled.");
       return;
     }
 
-    processRabbitAutoConfiguration(props, beanFactory);
+    if (!props.getSources().containsKey(EasyRabbitProperties.PRIMARY)) {
+      log.warn("'easy-boot.rabbit.sources' cannot be without primary source.");
+      throw new IllegalArgumentException(
+          "'easy-boot.rabbit.sources' cannot be without primary source.");
+    }
+
+    CustomMessageConverter converter = new CustomMessageConverter();
+    beanFactory.registerSingleton("customMessageConverter", converter);
+
+    for (Map.Entry<String, RabbitProperties> entry : props.getSources().entrySet()) {
+      processRabbitAutoConfiguration(entry.getKey(), entry.getValue(), converter, beanFactory);
+    }
   }
 
-  private void processRabbitAutoConfiguration(EasyRabbitProperties properties,
-      ConfigurableListableBeanFactory beanFactory) {
+  private void processRabbitAutoConfiguration(String sourceName, RabbitProperties properties,
+      CustomMessageConverter converter, ConfigurableListableBeanFactory beanFactory) {
     RabbitMeta rabbitMeta = new RabbitMeta();
+    rabbitMeta.setConverter(converter);
 
+    String suffix = getSuffix(sourceName);
     RabbitConnectionFactoryBeanConfigurer rabbitConnectionFactoryBeanConfigurer = new RabbitConnectionFactoryBeanConfigurer(
-        resourceLoader,
-        properties.getConfig());
-    beanFactory.registerSingleton("rabbitConnectionFactoryBeanConfigurer",
+        resourceLoader, properties);
+    beanFactory.registerSingleton("rabbitConnectionFactoryBeanConfigurer" + suffix,
         rabbitConnectionFactoryBeanConfigurer);
 
     CachingConnectionFactoryConfigurer cachingConnectionFactoryConfigurer = new CachingConnectionFactoryConfigurer(
-        properties.getConfig());
-    beanFactory.registerSingleton("rabbitConnectionFactoryConfigurer",
+        properties);
+    beanFactory.registerSingleton("rabbitConnectionFactoryConfigurer" + suffix,
         cachingConnectionFactoryConfigurer);
 
     RabbitConnectionFactoryBean connectionFactoryBean = new RabbitConnectionFactoryBean();
@@ -92,32 +106,30 @@ public class RabbitBeanFactoryPostProcessor implements BeanFactoryPostProcessor,
     CachingConnectionFactory cachingConnectionFactory = new CachingConnectionFactory(
         connectionFactory);
     cachingConnectionFactoryConfigurer.configure(cachingConnectionFactory);
-    beanFactory.registerSingleton("rabbitConnectionFactory", cachingConnectionFactory);
+    beanFactory.registerSingleton("rabbitConnectionFactory" + suffix,
+        cachingConnectionFactory);
     rabbitMeta.setConnectionFactory(cachingConnectionFactory);
 
-    CustomMessageConverter converter = new CustomMessageConverter();
-    beanFactory.registerSingleton("customMessageConverter", converter);
-    rabbitMeta.setConverter(converter);
-
-    RabbitTemplateConfigurer rabbitTemplateConfigurer = new RabbitTemplateConfigurer(
-        properties.getConfig());
+    RabbitTemplateConfigurer rabbitTemplateConfigurer = new RabbitTemplateConfigurer(properties);
     rabbitTemplateConfigurer.setMessageConverter(converter);
-    beanFactory.registerSingleton("rabbitTemplateConfigurer", rabbitTemplateConfigurer);
+    beanFactory.registerSingleton("rabbitTemplateConfigurer" + suffix,
+        rabbitTemplateConfigurer);
 
     RabbitTemplate rabbitTemplate = new RabbitTemplate();
     rabbitTemplateConfigurer.configure(rabbitTemplate, cachingConnectionFactory);
-    beanFactory.registerSingleton("rabbitTemplate", rabbitTemplate);
+    beanFactory.registerSingleton("rabbitTemplate" + suffix, rabbitTemplate);
     rabbitMeta.setRabbitTemplate(rabbitTemplate);
 
     RabbitAdmin rabbitAdmin = new RabbitAdmin(cachingConnectionFactory);
-    beanFactory.registerSingleton("amqpAdmin", rabbitAdmin);
+    beanFactory.registerSingleton("amqpAdmin" + suffix, rabbitAdmin);
     rabbitMeta.setRabbitAdmin(rabbitAdmin);
 
     RabbitMessagingTemplate rabbitMessagingTemplate = new RabbitMessagingTemplate(rabbitTemplate);
-    beanFactory.registerSingleton("rabbitMessagingTemplate", rabbitMessagingTemplate);
+    beanFactory.registerSingleton("rabbitMessagingTemplate" + suffix,
+        rabbitMessagingTemplate);
     rabbitMeta.setRabbitMessagingTemplate(rabbitMessagingTemplate);
 
-    RabbitMeta.regist(EasyRabbitProperties.PRIMARY, rabbitMeta);
+    RabbitMeta.regist(sourceName, rabbitMeta);
   }
 
   @Override
@@ -128,5 +140,12 @@ public class RabbitBeanFactoryPostProcessor implements BeanFactoryPostProcessor,
   @Override
   public void setResourceLoader(ResourceLoader resourceLoader) {
     this.resourceLoader = resourceLoader;
+  }
+
+  private String getSuffix(String source) {
+    if (EasyRabbitProperties.PRIMARY.equals(source)) {
+      return "";
+    }
+    return "_" + source;
   }
 }

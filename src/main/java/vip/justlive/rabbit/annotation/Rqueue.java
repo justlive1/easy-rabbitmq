@@ -20,6 +20,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import org.springframework.stereotype.Component;
+import vip.justlive.rabbit.EasyRabbitProperties;
 
 /**
  * Rqueue
@@ -73,6 +74,13 @@ public @interface Rqueue {
    * @return group
    */
   String group() default "";
+
+  /**
+   * 数据源，默认使用primary数据源
+   *
+   * @return datasource
+   */
+  String datasource() default EasyRabbitProperties.PRIMARY;
 
 
 }

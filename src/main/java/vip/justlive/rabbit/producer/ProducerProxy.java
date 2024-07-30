@@ -14,13 +14,13 @@
 
 package vip.justlive.rabbit.producer;
 
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.core.env.Environment;
+import vip.justlive.rabbit.RabbitMeta;
 import vip.justlive.rabbit.annotation.Rqueue;
-
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Method;
 
 /**
  * proxy
@@ -30,43 +30,52 @@ import java.lang.reflect.Method;
  */
 @Slf4j
 public class ProducerProxy<T> implements InvocationHandler {
-  
+
   private final boolean exchangeMode;
   private final RabbitTemplate template;
   private final QueueProperties queueProperties;
-  
-  ProducerProxy(Class<T> clazz, RabbitTemplate template, Environment environment) {
+
+  ProducerProxy(Class<T> clazz, Environment environment) {
     Rqueue rqueue = clazz.getAnnotation(Rqueue.class);
     if (rqueue == null) {
       throw new IllegalArgumentException("BaseProducer 接口需要 @Rqueue");
     }
-    
+
     String queue = environment.resolvePlaceholders(rqueue.queue());
     String exchange = environment.resolvePlaceholders(rqueue.exchange());
     String routing = environment.resolvePlaceholders(rqueue.routing());
     String messageConverter = environment.resolvePlaceholders(rqueue.messageConverter());
+    String datasource = environment.resolvePlaceholders(rqueue.datasource());
+
+    RabbitMeta rabbitMeta = RabbitMeta.lookup(datasource);
+    if (rabbitMeta == null) {
+      throw new IllegalArgumentException("rabbitMeta not found for datasource: " + datasource);
+    }
+
     this.queueProperties = new QueueProperties(queue, exchange, routing, messageConverter);
     this.exchangeMode = exchange.length() > 0;
-    this.template = template;
-    
-    log.info("created producer proxy for queue [{}][{}][{}]", queue, exchange, routing);
+    this.template = rabbitMeta.getRabbitTemplate();
+
+    log.info("created producer proxy for queue [{}][{}][{}]->[{}]", queue, exchange, routing,
+        datasource);
   }
-  
+
   @Override
   public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-    
+
     if (!BaseProducer.class.equals(method.getDeclaringClass())) {
       return method.invoke(this, args);
     }
-    
+
     QueueProperties.set(queueProperties);
-    
+
     if (exchangeMode) {
-      template.convertAndSend(queueProperties.getExchange(), queueProperties.getRouting(), args[0], queueProperties);
+      template.convertAndSend(queueProperties.getExchange(), queueProperties.getRouting(), args[0],
+          queueProperties);
     } else {
       template.convertAndSend(queueProperties.getRouting(), args[0], queueProperties);
     }
     return null;
   }
-  
+
 }

@@ -27,6 +27,7 @@ import org.springframework.amqp.rabbit.listener.adapter.MessageListenerAdapter;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.boot.autoconfigure.amqp.RabbitProperties;
 import org.springframework.boot.autoconfigure.amqp.SimpleRabbitListenerContainerFactoryConfigurer;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.context.EnvironmentAware;
@@ -61,8 +62,8 @@ public class RabbitConsumerBeanFactoryPostProcessor implements BeanFactoryPostPr
     EasyRabbitProperties props = binder.bindOrCreate(EasyRabbitProperties.PREFIX,
         EasyRabbitProperties.class);
 
-    if (props.getConfig() == null) {
-      log.info("'easy-boot.rabbit.config' is null, easy rabbit is disabled.");
+    if (props.getSources() == null) {
+      log.info("'easy-boot.rabbit.sources' is null, easy rabbit is disabled.");
       return;
     }
     if (!props.getConsumer().isEnabled()) {
@@ -97,9 +98,10 @@ public class RabbitConsumerBeanFactoryPostProcessor implements BeanFactoryPostPr
       String routing = environment.resolvePlaceholders(rqueue.routing());
       String messageConverter = environment.resolvePlaceholders(rqueue.messageConverter());
       String group = environment.resolvePlaceholders(rqueue.group());
+      String datasource = environment.resolvePlaceholders(rqueue.datasource());
 
       ConsumerMeta meta = new ConsumerMeta(queueName, exchangeName, exchangeType, routing,
-          messageConverter, group, className);
+          messageConverter, group, datasource, className);
       ConsumerMeta.regist(meta);
 
       log.info("find Rqueue meta: {} ", meta);
@@ -118,24 +120,38 @@ public class RabbitConsumerBeanFactoryPostProcessor implements BeanFactoryPostPr
     Receiver receiver = new Receiver(rabbitMeta.getConverter(), props);
     beanFactory.registerSingleton("easyRabbitReceiver", receiver);
 
-    Map<String, List<ConsumerMeta>> groups = ConsumerMeta.group();
-    for (Map.Entry<String, List<ConsumerMeta>> entry : groups.entrySet()) {
-      SimpleMessageListenerContainer container = simpleMessageListenerContainer(props,
-          rabbitMeta.getConnectionFactory(), receiver, entry.getValue());
-      String beanName = String.format("simpleMessageListenerContainer_%s", entry.getKey());
-      container.setBeanName(beanName);
-      beanFactory.registerSingleton(beanName, container);
+    Map<String, Map<String, List<ConsumerMeta>>> groups = ConsumerMeta.group();
+    for (Map.Entry<String, Map<String, List<ConsumerMeta>>> entry : groups.entrySet()) {
+      for (Map.Entry<String, List<ConsumerMeta>> entry2 : entry.getValue().entrySet()) {
+
+        RabbitProperties properties = props.getSources().get(entry.getKey());
+        rabbitMeta = RabbitMeta.lookup(entry.getKey());
+        if (properties == null || rabbitMeta == null) {
+          log.error("{} RabbitMeta not found. cannot init message listener for this datasource",
+              entry.getKey());
+          return;
+        }
+
+        SimpleMessageListenerContainer container = simpleMessageListenerContainer(entry.getKey(),
+            properties, rabbitMeta.getConnectionFactory(), receiver, entry2.getValue());
+        String beanName = "rabbitListenerContainerFactory";
+        if (groups.size() > 1 && !EasyRabbitProperties.PRIMARY.equals(entry.getKey())) {
+          beanName = String.format("SMLContainer_%s_%s", entry.getKey(), entry2.getKey());
+        }
+        container.setBeanName(beanName);
+        beanFactory.registerSingleton(beanName, container);
+      }
     }
 
   }
 
 
-  public SimpleMessageListenerContainer simpleMessageListenerContainer(
-      EasyRabbitProperties properties, ConnectionFactory connectionFactory, Receiver receiver,
+  public SimpleMessageListenerContainer simpleMessageListenerContainer(String datasource,
+      RabbitProperties properties, ConnectionFactory connectionFactory, Receiver receiver,
       List<ConsumerMeta> consumerMetas) {
 
     SimpleRabbitListenerContainerFactoryConfigurer configurer = new SimpleRabbitListenerContainerFactoryConfigurer(
-        properties.getConfig());
+        properties);
     SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
     configurer.configure(factory, connectionFactory);
     SimpleMessageListenerContainer container = factory.createListenerContainer();
@@ -147,7 +163,7 @@ public class RabbitConsumerBeanFactoryPostProcessor implements BeanFactoryPostPr
     container.setQueueNames(queueNames.toArray(new String[0]));
     container.setAcknowledgeMode(AcknowledgeMode.MANUAL);
 
-    log.info("init message listener for queue(s) {}", queueNames);
+    log.info("init message listener for queue(s) {} -> {}", queueNames, datasource);
     return container;
   }
 }

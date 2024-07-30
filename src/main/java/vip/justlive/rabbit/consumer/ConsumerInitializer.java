@@ -26,6 +26,7 @@ import org.springframework.amqp.core.Exchange;
 import org.springframework.amqp.core.ExchangeBuilder;
 import org.springframework.amqp.core.Queue;
 import org.springframework.util.StringUtils;
+import vip.justlive.rabbit.RabbitMeta;
 
 /**
  * 消费者初始化执行器
@@ -36,7 +37,6 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class ConsumerInitializer {
 
-  private final AmqpAdmin amqpAdmin;
   private final List<Consumer<?>> consumers;
 
   @PostConstruct
@@ -54,6 +54,12 @@ public class ConsumerInitializer {
         continue;
       }
 
+      RabbitMeta rabbitMeta = RabbitMeta.lookup(meta.getDatasource());
+      if (rabbitMeta == null) {
+        continue;
+      }
+
+      AmqpAdmin amqpAdmin = rabbitMeta.getRabbitAdmin();
       Queue queue = new Queue(meta.getQueueName());
       if (queueNames.add(meta.getQueueName())) {
         amqpAdmin.declareQueue(queue);
@@ -66,8 +72,9 @@ public class ConsumerInitializer {
         amqpAdmin.declareBinding(
             BindingBuilder.bind(queue).to(exchange).with(meta.getRouting()).noargs());
       }
-      log.info("register consumer for [{}][{}][{}] using [{}][{}]", meta.getQueueName(),
-          meta.getExchangeName(), meta.getRouting(), meta.getMessageConverter(), consumer);
+      log.info("register consumer for [{}][{}][{}] -> [{}] using [{}][{}]", meta.getQueueName(),
+          meta.getExchangeName(), meta.getRouting(), meta.getDatasource(),
+          meta.getMessageConverter(), consumer);
       ConsumerDef.register(meta.getQueueName(), meta.getExchangeName(), meta.getRouting(),
           meta.getMessageConverter(), consumer);
     }
