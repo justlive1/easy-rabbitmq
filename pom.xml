@@ -6,7 +6,7 @@
 
   <groupId>vip.justlive</groupId>
   <artifactId>easy-rabbitmq</artifactId>
-  <version>1.1.0.SNAPSHOT</version>
+  <version>1.1.0</version>
   <packaging>jar</packaging>
 
   <name>easy-rabbitmq</name>
