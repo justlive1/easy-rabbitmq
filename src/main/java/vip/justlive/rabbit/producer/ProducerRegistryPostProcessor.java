@@ -18,7 +18,6 @@ import java.util.Collections;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
 import org.springframework.boot.context.properties.bind.Bindable;
@@ -66,11 +65,6 @@ public class ProducerRegistryPostProcessor implements BeanDefinitionRegistryPost
     ProducerScanner scanner = new ProducerScanner(registry);
     scanner.setResourceLoader(resourceLoader);
     scanner.scan(basePackages.toArray(new String[0]));
-  }
-
-  @Override
-  public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory)
-      throws BeansException {
   }
 
 }

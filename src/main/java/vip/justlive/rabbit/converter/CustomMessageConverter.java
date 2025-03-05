@@ -50,8 +50,8 @@ public class CustomMessageConverter extends AbstractMessageConverter implements
     }
 
     if (applicationContext != null && StringUtils.hasText(
-        consumer.getQueueProperties().getMessageConverter())) {
-      return applicationContext.getBean(consumer.getQueueProperties().getMessageConverter(),
+        consumer.getQueueProperties().messageConverter())) {
+      return applicationContext.getBean(consumer.getQueueProperties().messageConverter(),
               MessageConverter.class)
           .fromMessage(message);
     }
@@ -85,8 +85,8 @@ public class CustomMessageConverter extends AbstractMessageConverter implements
 
     QueueProperties queueProperties = QueueProperties.get();
     if (applicationContext != null && queueProperties != null &&
-        StringUtils.hasText(queueProperties.getMessageConverter())) {
-      return applicationContext.getBean(queueProperties.getMessageConverter(),
+        StringUtils.hasText(queueProperties.messageConverter())) {
+      return applicationContext.getBean(queueProperties.messageConverter(),
               MessageConverter.class)
           .toMessage(object, props);
     }

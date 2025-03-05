@@ -53,7 +53,7 @@ public class ProducerProxy<T> implements InvocationHandler {
     }
 
     this.queueProperties = new QueueProperties(queue, exchange, routing, messageConverter);
-    this.exchangeMode = exchange.length() > 0;
+    this.exchangeMode = !exchange.isEmpty();
     this.template = rabbitMeta.getRabbitTemplate();
 
     log.info("created producer proxy for queue [{}][{}][{}]->[{}]", queue, exchange, routing,
@@ -70,10 +70,10 @@ public class ProducerProxy<T> implements InvocationHandler {
     QueueProperties.set(queueProperties);
 
     if (exchangeMode) {
-      template.convertAndSend(queueProperties.getExchange(), queueProperties.getRouting(), args[0],
+      template.convertAndSend(queueProperties.exchange(), queueProperties.routing(), args[0],
           queueProperties);
     } else {
-      template.convertAndSend(queueProperties.getRouting(), args[0], queueProperties);
+      template.convertAndSend(queueProperties.routing(), args[0], queueProperties);
     }
     return null;
   }

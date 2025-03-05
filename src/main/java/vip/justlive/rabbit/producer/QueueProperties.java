@@ -14,7 +14,6 @@
 
 package vip.justlive.rabbit.producer;
 
-import lombok.Data;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessagePostProcessor;
 
@@ -23,28 +22,23 @@ import org.springframework.amqp.core.MessagePostProcessor;
  *
  * @author wubo
  */
-@Data
-public class QueueProperties implements MessagePostProcessor {
-  
+public record QueueProperties(String queue, String exchange, String routing,
+                              String messageConverter) implements MessagePostProcessor {
+
   private static final ThreadLocal<QueueProperties> HOLDER = new ThreadLocal<>();
-  
-  private final String queue;
-  private final String exchange;
-  private final String routing;
-  private final String messageConverter;
-  
+
   public static void set(QueueProperties queueProperties) {
     HOLDER.set(queueProperties);
   }
-  
+
   public static QueueProperties get() {
     return HOLDER.get();
   }
-  
+
   @Override
   public Message postProcessMessage(Message message) {
     HOLDER.remove();
     return message;
   }
-  
+
 }
