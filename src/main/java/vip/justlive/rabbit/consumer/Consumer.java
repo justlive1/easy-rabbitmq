@@ -17,11 +17,12 @@ package vip.justlive.rabbit.consumer;
 /**
  * 消息处理器
  *
+ * @param <T> 泛型
  * @author wubo
  */
 @FunctionalInterface
 public interface Consumer<T> {
-  
+
   /**
    * 处理
    *

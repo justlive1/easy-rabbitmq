@@ -20,6 +20,10 @@ import org.springframework.amqp.core.MessagePostProcessor;
 /**
  * 队列相关属性
  *
+ * @param queue            queue
+ * @param exchange         exchange
+ * @param routing          routing
+ * @param messageConverter converter
  * @author wubo
  */
 public record QueueProperties(String queue, String exchange, String routing,
