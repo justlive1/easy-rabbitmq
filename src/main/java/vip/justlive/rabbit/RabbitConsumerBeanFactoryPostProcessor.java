@@ -72,12 +72,13 @@ public class RabbitConsumerBeanFactoryPostProcessor implements BeanFactoryPostPr
       return;
     }
 
-    processRabbitConsumerMeta(beanFactory);
+    processRabbitConsumerMeta(props.getConsumer(), beanFactory);
     processRabbitAutoConfiguration(props, beanFactory);
   }
 
 
-  private void processRabbitConsumerMeta(ConfigurableListableBeanFactory beanFactory) {
+  private void processRabbitConsumerMeta(EasyRabbitProperties.ConsumerProperties props,
+      ConfigurableListableBeanFactory beanFactory) {
 
     for (String name : beanFactory.getBeanNamesForType(Consumer.class)) {
       String className = beanFactory.getBeanDefinition(name).getBeanClassName();
@@ -100,11 +101,14 @@ public class RabbitConsumerBeanFactoryPostProcessor implements BeanFactoryPostPr
       String group = environment.resolvePlaceholders(rqueue.group());
       String datasource = environment.resolvePlaceholders(rqueue.datasource());
 
-      ConsumerMeta meta = new ConsumerMeta(queueName, exchangeName, exchangeType, routing,
-          messageConverter, group, datasource, className);
-      ConsumerMeta.regist(meta);
-
-      log.info("find Rqueue meta: {} ", meta);
+      if (props.getIgnoreQueues() != null && props.getIgnoreQueues().contains(queueName)) {
+        log.info("ignore Rqueue for queue {} ", queueName);
+      } else {
+        ConsumerMeta meta = new ConsumerMeta(queueName, exchangeName, exchangeType, routing,
+            messageConverter, group, datasource, className);
+        ConsumerMeta.regist(meta);
+        log.info("find Rqueue meta: {} ", meta);
+      }
     }
   }
 
