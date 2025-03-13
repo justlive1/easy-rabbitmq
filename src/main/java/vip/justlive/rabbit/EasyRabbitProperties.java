@@ -14,6 +14,7 @@
 
 package vip.justlive.rabbit;
 
+import java.util.List;
 import java.util.Map;
 import lombok.Data;
 import org.springframework.boot.autoconfigure.amqp.RabbitProperties;
@@ -50,5 +51,6 @@ public class EasyRabbitProperties {
     private boolean ackMultiple = false;
     private boolean nackMultiple = false;
     private boolean nackRequeue = true;
+    private List<String> ignoreQueues;
   }
 }
