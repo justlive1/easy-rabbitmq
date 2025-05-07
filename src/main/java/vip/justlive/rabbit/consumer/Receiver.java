@@ -17,10 +17,12 @@ package vip.justlive.rabbit.consumer;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.listener.api.ChannelAwareMessageListener;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.util.StringUtils;
 import vip.justlive.rabbit.EasyRabbitProperties;
 
 /**
@@ -39,6 +41,12 @@ public class Receiver implements ChannelAwareMessageListener {
   public void onMessage(Message message, Channel channel) throws Exception {
     try {
       MessageProperties prop = message.getMessageProperties();
+      if (StringUtils.hasText(properties.getTraceIdKey())) {
+        String traceId = prop.getHeader(properties.getTraceIdKey());
+        if (StringUtils.hasText(traceId)) {
+          MDC.put(properties.getTraceIdKey(), traceId);
+        }
+      }
       ConsumerDef consumer = ConsumerDef.lookup(prop.getConsumerQueue(), prop.getReceivedExchange(),
           prop.getReceivedRoutingKey());
       if (consumer == null) {

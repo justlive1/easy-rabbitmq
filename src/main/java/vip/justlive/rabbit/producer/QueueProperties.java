@@ -14,8 +14,11 @@
 
 package vip.justlive.rabbit.producer;
 
+import org.slf4j.MDC;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessagePostProcessor;
+import org.springframework.util.StringUtils;
+import vip.justlive.rabbit.EasyRabbitProperties;
 
 /**
  * 队列相关属性
@@ -41,6 +44,16 @@ public record QueueProperties(String queue, String exchange, String routing,
 
   @Override
   public Message postProcessMessage(Message message) {
+
+    String traceIdKey = ProducerRegistryPostProcessor.CTX.get().getBean(EasyRabbitProperties.class)
+        .getTraceIdKey();
+    if (StringUtils.hasText(traceIdKey)) {
+      String traceId = MDC.get(traceIdKey);
+      if (StringUtils.hasText(traceId)) {
+        message.getMessageProperties().setHeader(traceIdKey, traceId);
+      }
+    }
+
     HOLDER.remove();
     return message;
   }

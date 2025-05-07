@@ -32,7 +32,7 @@ public class EasyRabbitProperties {
   public static final String PREFIX = "easy-boot.rabbit";
   public static final String PRIMARY = "primary";
 
-
+  private String traceIdKey = "trace-id";
   private String[] basePackages;
   private Map<String, RabbitProperties> sources;
   private ProducerProperties producer;
