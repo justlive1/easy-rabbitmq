@@ -16,6 +16,7 @@ package vip.justlive.rabbit.producer;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
@@ -37,12 +38,13 @@ import org.springframework.core.io.ResourceLoader;
 public class ProducerRegistryPostProcessor implements BeanDefinitionRegistryPostProcessor,
     ApplicationContextAware, ResourceLoaderAware {
 
+  static final AtomicReference<ApplicationContext> CTX = new AtomicReference<>();
+
   private ResourceLoader resourceLoader;
-  private ApplicationContext applicationContext;
 
   @Override
   public void setApplicationContext(ApplicationContext applicationContext) {
-    this.applicationContext = applicationContext;
+    CTX.set(applicationContext);
   }
 
   @Override
@@ -54,7 +56,7 @@ public class ProducerRegistryPostProcessor implements BeanDefinitionRegistryPost
   public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry)
       throws BeansException {
 
-    Binder binder = Binder.get(this.applicationContext.getEnvironment());
+    Binder binder = Binder.get(CTX.get().getEnvironment());
     List<String> basePackages = binder
         .bind("easy-boot.rabbit.base-packages", Bindable.listOf(String.class))
         .orElse(Collections.emptyList());

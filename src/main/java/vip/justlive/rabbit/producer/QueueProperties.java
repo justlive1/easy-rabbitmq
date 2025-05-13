@@ -15,8 +15,11 @@
 package vip.justlive.rabbit.producer;
 
 import lombok.Data;
+import org.slf4j.MDC;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessagePostProcessor;
+import org.springframework.util.StringUtils;
+import vip.justlive.rabbit.EasyRabbitProperties;
 
 /**
  * 队列相关属性
@@ -25,26 +28,36 @@ import org.springframework.amqp.core.MessagePostProcessor;
  */
 @Data
 public class QueueProperties implements MessagePostProcessor {
-  
+
   private static final ThreadLocal<QueueProperties> HOLDER = new ThreadLocal<>();
-  
+
   private final String queue;
   private final String exchange;
   private final String routing;
   private final String messageConverter;
-  
+
   public static void set(QueueProperties queueProperties) {
     HOLDER.set(queueProperties);
   }
-  
+
   public static QueueProperties get() {
     return HOLDER.get();
   }
-  
+
   @Override
   public Message postProcessMessage(Message message) {
+
+    String traceIdKey = ProducerRegistryPostProcessor.CTX.get().getBean(EasyRabbitProperties.class)
+        .getTraceIdKey();
+    if (StringUtils.hasText(traceIdKey)) {
+      String traceId = MDC.get(traceIdKey);
+      if (StringUtils.hasText(traceId)) {
+        message.getMessageProperties().setHeader(traceIdKey, traceId);
+      }
+    }
+
     HOLDER.remove();
     return message;
   }
-  
+
 }
