@@ -14,10 +14,12 @@
 
 package vip.justlive.rabbit.converter;
 
-import com.alibaba.fastjson.JSON;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.support.converter.AbstractMessageConverter;
@@ -34,25 +36,28 @@ import vip.justlive.rabbit.producer.QueueProperties;
  *
  * @author wubo
  */
-public class CustomMessageConverter extends AbstractMessageConverter implements
-    ApplicationContextAware {
+@Slf4j
+public class CustomMessageConverter extends AbstractMessageConverter
+    implements ApplicationContextAware {
 
+  private ObjectMapper objectMapper;
   private ApplicationContext applicationContext;
 
   @Override
   public Object fromMessage(Message message) {
 
     MessageProperties prop = message.getMessageProperties();
-    ConsumerDef consumer = ConsumerDef.lookup(prop.getConsumerQueue(), prop.getReceivedExchange(),
-        prop.getReceivedRoutingKey());
+    ConsumerDef consumer =
+        ConsumerDef.lookup(
+            prop.getConsumerQueue(), prop.getReceivedExchange(), prop.getReceivedRoutingKey());
     if (consumer == null) {
       return message.getBody();
     }
 
-    if (applicationContext != null && StringUtils.hasText(
-        consumer.getQueueProperties().messageConverter())) {
-      return applicationContext.getBean(consumer.getQueueProperties().messageConverter(),
-              MessageConverter.class)
+    if (applicationContext != null
+        && StringUtils.hasText(consumer.getQueueProperties().messageConverter())) {
+      return applicationContext
+          .getBean(consumer.getQueueProperties().messageConverter(), MessageConverter.class)
           .fromMessage(message);
     }
 
@@ -75,7 +80,13 @@ public class CustomMessageConverter extends AbstractMessageConverter implements
     }
 
     if (type != byte[].class) {
-      msg = JSON.parseObject((byte[]) msg, type);
+      try {
+        msg =
+            getObjectMapper()
+                .readValue((byte[]) msg, getObjectMapper().getTypeFactory().constructType(type));
+      } catch (IOException e) {
+        throw new MessageConversionException("failed to convert Message content", e);
+      }
     }
     return msg;
   }
@@ -84,10 +95,11 @@ public class CustomMessageConverter extends AbstractMessageConverter implements
   protected Message createMessage(Object object, MessageProperties props) {
 
     QueueProperties queueProperties = QueueProperties.get();
-    if (applicationContext != null && queueProperties != null &&
-        StringUtils.hasText(queueProperties.messageConverter())) {
-      return applicationContext.getBean(queueProperties.messageConverter(),
-              MessageConverter.class)
+    if (applicationContext != null
+        && queueProperties != null
+        && StringUtils.hasText(queueProperties.messageConverter())) {
+      return applicationContext
+          .getBean(queueProperties.messageConverter(), MessageConverter.class)
           .toMessage(object, props);
     }
 
@@ -99,7 +111,11 @@ public class CustomMessageConverter extends AbstractMessageConverter implements
       bytes = ((String) object).getBytes(StandardCharsets.UTF_8);
       props.setContentType(MessageProperties.CONTENT_TYPE_TEXT_PLAIN);
     } else {
-      bytes = JSON.toJSONBytes(object);
+      try {
+        bytes = getObjectMapper().writeValueAsBytes(object);
+      } catch (IOException e) {
+        throw new MessageConversionException("failed to convert Message content", e);
+      }
       props.setContentType(MessageProperties.CONTENT_TYPE_JSON);
     }
     props.setContentLength(bytes.length);
@@ -111,5 +127,26 @@ public class CustomMessageConverter extends AbstractMessageConverter implements
     this.applicationContext = applicationContext;
   }
 
+  public ObjectMapper getObjectMapper() {
+    if (objectMapper != null) {
+      return objectMapper;
+    }
+    synchronized (this) {
+      if (objectMapper != null) {
+        return objectMapper;
+      }
+      if (applicationContext != null) {
+        try {
+          objectMapper = applicationContext.getBean(ObjectMapper.class);
+        } catch (Exception e) {
+          log.warn("ObjectMapper not found in application context, create ObjectMapper");
+          objectMapper = new ObjectMapper();
+        }
+      } else {
+        log.warn("ApplicationContext not available, create ObjectMapper");
+        objectMapper = new ObjectMapper();
+      }
+      return objectMapper;
+    }
+  }
 }
-

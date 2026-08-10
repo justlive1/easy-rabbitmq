@@ -29,6 +29,8 @@ import org.springframework.boot.autoconfigure.amqp.RabbitConnectionFactoryBeanCo
 import org.springframework.boot.autoconfigure.amqp.RabbitProperties;
 import org.springframework.boot.autoconfigure.amqp.RabbitTemplateConfigurer;
 import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.EnvironmentAware;
 import org.springframework.context.ResourceLoaderAware;
 import org.springframework.core.env.Environment;
@@ -42,10 +44,11 @@ import vip.justlive.rabbit.converter.CustomMessageConverter;
  */
 @Slf4j
 public class RabbitBeanFactoryPostProcessor implements BeanFactoryPostProcessor, EnvironmentAware,
-    ResourceLoaderAware {
+    ResourceLoaderAware, ApplicationContextAware {
 
   private Environment environment;
   private ResourceLoader resourceLoader;
+  private ApplicationContext applicationContext;
 
   @Override
   public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory)
@@ -67,6 +70,7 @@ public class RabbitBeanFactoryPostProcessor implements BeanFactoryPostProcessor,
     }
 
     CustomMessageConverter converter = new CustomMessageConverter();
+    converter.setApplicationContext(applicationContext);
     beanFactory.registerSingleton("customMessageConverter", converter);
 
     for (Map.Entry<String, RabbitProperties> entry : props.getSources().entrySet()) {
@@ -130,6 +134,11 @@ public class RabbitBeanFactoryPostProcessor implements BeanFactoryPostProcessor,
     rabbitMeta.setRabbitMessagingTemplate(rabbitMessagingTemplate);
 
     RabbitMeta.regist(sourceName, rabbitMeta);
+  }
+
+  @Override
+  public void setApplicationContext(ApplicationContext applicationContext) {
+    this.applicationContext = applicationContext;
   }
 
   @Override

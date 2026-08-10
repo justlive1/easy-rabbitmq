@@ -10,9 +10,9 @@ module easy.rabbitmq {
   requires spring.boot.autoconfigure;
   requires spring.rabbit;
   requires org.slf4j;
+  requires com.fasterxml.jackson.databind;
 
   requires static lombok;
-  requires static fastjson;
 
   exports vip.justlive.rabbit;
   exports vip.justlive.rabbit.annotation;
